@@ -4,3 +4,5 @@ extensions/
 argv.json
 .agents/
 public/medpathfinder.zip
+.idx/
+.vscode/
