@@ -5,12 +5,12 @@ const revealItems = document.querySelectorAll("[data-reveal]");
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 const mobileBreakpoint = window.matchMedia("(max-width: 899px)");
 
-const setHeaderScrolled = () => {
+const setHeaderState = () => {
   if (!header) {
     return;
   }
 
-  header.classList.toggle("is-scrolled", window.scrollY > 12);
+  header.classList.toggle("is-scrolled", window.scrollY > 8);
 };
 
 const setMenuState = (isOpen) => {
@@ -24,14 +24,13 @@ const setMenuState = (isOpen) => {
   menuToggle.setAttribute("aria-label", isOpen ? "메뉴 닫기" : "메뉴 열기");
 };
 
-setHeaderScrolled();
-
-window.addEventListener("scroll", setHeaderScrolled, { passive: true });
+setHeaderState();
+window.addEventListener("scroll", setHeaderState, { passive: true });
 
 if (menuToggle && mobileNav) {
   menuToggle.addEventListener("click", () => {
-    const isOpen = header ? !header.classList.contains("menu-open") : false;
-    setMenuState(isOpen);
+    const shouldOpen = header ? !header.classList.contains("menu-open") : false;
+    setMenuState(shouldOpen);
   });
 
   mobileNav.querySelectorAll("a").forEach((link) => {
@@ -65,49 +64,27 @@ window.addEventListener("resize", () => {
   }
 });
 
-document.querySelectorAll("[data-scroll-control]").forEach((button) => {
-  const targetId = button.getAttribute("data-target");
-  const direction = button.getAttribute("data-scroll-control");
-  const scrollArea = targetId ? document.getElementById(targetId) : null;
-
-  if (!scrollArea) {
-    return;
-  }
-
-  button.addEventListener("click", () => {
-    const firstCard = scrollArea.querySelector(".resource-card");
-    const gap = 16;
-    const distance = firstCard ? firstCard.getBoundingClientRect().width + gap : scrollArea.clientWidth * 0.85;
-    const left = direction === "prev" ? -distance : distance;
-
-    scrollArea.scrollBy({
-      left,
-      behavior: reduceMotion.matches ? "auto" : "smooth",
-    });
-  });
-});
-
 if (revealItems.length > 0) {
   if (reduceMotion.matches || !("IntersectionObserver" in window)) {
     revealItems.forEach((item) => item.classList.add("is-visible"));
   } else {
-    const revealObserver = new IntersectionObserver(
-      (entries, observer) => {
+    const observer = new IntersectionObserver(
+      (entries, revealObserver) => {
         entries.forEach((entry) => {
           if (!entry.isIntersecting) {
             return;
           }
 
           entry.target.classList.add("is-visible");
-          observer.unobserve(entry.target);
+          revealObserver.unobserve(entry.target);
         });
       },
       {
-        threshold: 0.16,
+        threshold: 0.12,
         rootMargin: "0px 0px -8% 0px",
       },
     );
 
-    revealItems.forEach((item) => revealObserver.observe(item));
+    revealItems.forEach((item) => observer.observe(item));
   }
 }
