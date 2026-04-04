@@ -1,112 +1,113 @@
-const THEME_STORAGE_KEY = "medpathfinder-theme";
-const root = document.documentElement;
-const themeToggle = document.querySelector("[data-theme-toggle]");
+const header = document.querySelector(".site-header");
+const menuToggle = document.querySelector("[data-menu-toggle]");
+const mobileNav = document.querySelector("[data-mobile-nav]");
+const revealItems = document.querySelectorAll("[data-reveal]");
+const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+const mobileBreakpoint = window.matchMedia("(max-width: 899px)");
 
-const getPreferredTheme = () => {
-  const savedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
-
-  if (savedTheme === "light" || savedTheme === "dark") {
-    return savedTheme;
-  }
-
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-};
-
-const applyTheme = (theme) => {
-  const nextTheme = theme === "dark" ? "dark" : "light";
-  root.dataset.theme = nextTheme;
-
-  if (themeToggle) {
-    const nextLabel = nextTheme === "dark" ? "Light mode" : "Dark mode";
-    themeToggle.textContent = nextLabel;
-    themeToggle.setAttribute("aria-label", `Switch to ${nextLabel.toLowerCase()}`);
-    themeToggle.setAttribute("aria-pressed", String(nextTheme === "dark"));
-  }
-};
-
-applyTheme(getPreferredTheme());
-
-if (themeToggle) {
-  themeToggle.addEventListener("click", () => {
-    const nextTheme = root.dataset.theme === "dark" ? "light" : "dark";
-    applyTheme(nextTheme);
-    window.localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
-  });
-}
-
-const heroImage = document.getElementById("hero-image");
-const heroVisual = document.getElementById("hero-visual");
-
-if (heroImage && heroVisual) {
-  const fallbackToPlaceholder = () => heroVisual.classList.remove("has-image");
-  const enableRealImage = () => heroVisual.classList.add("has-image");
-
-  if (heroImage.complete && heroImage.naturalWidth > 0) {
-    enableRealImage();
-  } else {
-    heroImage.addEventListener("load", enableRealImage);
-    heroImage.addEventListener("error", fallbackToPlaceholder);
-  }
-}
-
-const modal = document.getElementById("content-modal");
-const modalTitle = document.getElementById("modal-title");
-const modalDesc = document.getElementById("modal-desc");
-const contentCards = document.querySelectorAll(".content-card");
-const closeTargets = document.querySelectorAll("[data-close-modal]");
-
-const closeModal = () => {
-  if (!modal) {
+const setHeaderScrolled = () => {
+  if (!header) {
     return;
   }
 
-  modal.classList.remove("is-open");
-  modal.setAttribute("aria-hidden", "true");
-  document.body.style.overflow = "";
+  header.classList.toggle("is-scrolled", window.scrollY > 12);
 };
 
-const openModal = (title, desc) => {
-  if (!modal || !modalTitle || !modalDesc) {
+const setMenuState = (isOpen) => {
+  if (!header || !menuToggle || !mobileNav) {
     return;
   }
 
-  modalTitle.textContent = title;
-  modalDesc.textContent = desc;
-  modal.classList.add("is-open");
-  modal.setAttribute("aria-hidden", "false");
-  document.body.style.overflow = "hidden";
+  header.classList.toggle("menu-open", isOpen);
+  document.body.classList.toggle("nav-open", isOpen && mobileBreakpoint.matches);
+  menuToggle.setAttribute("aria-expanded", String(isOpen));
+  menuToggle.setAttribute("aria-label", isOpen ? "메뉴 닫기" : "메뉴 열기");
 };
 
-contentCards.forEach((card) => {
-  card.addEventListener("click", () => {
-    openModal(card.dataset.title || "Content", card.dataset.desc || "Details will be added soon.");
+setHeaderScrolled();
+
+window.addEventListener("scroll", setHeaderScrolled, { passive: true });
+
+if (menuToggle && mobileNav) {
+  menuToggle.addEventListener("click", () => {
+    const isOpen = header ? !header.classList.contains("menu-open") : false;
+    setMenuState(isOpen);
   });
-});
 
-closeTargets.forEach((target) => {
-  target.addEventListener("click", closeModal);
-});
+  mobileNav.querySelectorAll("a").forEach((link) => {
+    link.addEventListener("click", () => {
+      setMenuState(false);
+    });
+  });
 
-window.addEventListener("keydown", (event) => {
-  if (event.key === "Escape" && modal && modal.classList.contains("is-open")) {
-    closeModal();
-  }
-});
-
-const accordionTriggers = document.querySelectorAll(".accordion-trigger");
-
-accordionTriggers.forEach((trigger) => {
-  trigger.addEventListener("click", () => {
-    const item = trigger.closest(".accordion-item");
-    const panel = trigger.nextElementSibling;
-
-    if (!item || !panel) {
+  document.addEventListener("click", (event) => {
+    if (!header || !header.classList.contains("menu-open")) {
       return;
     }
 
-    const isOpen = item.classList.contains("open");
-    item.classList.toggle("open", !isOpen);
-    trigger.setAttribute("aria-expanded", String(!isOpen));
-    panel.style.maxHeight = isOpen ? "0px" : `${panel.scrollHeight}px`;
+    if (header.contains(event.target)) {
+      return;
+    }
+
+    setMenuState(false);
+  });
+
+  window.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      setMenuState(false);
+    }
+  });
+}
+
+window.addEventListener("resize", () => {
+  if (!mobileBreakpoint.matches) {
+    setMenuState(false);
+  }
+});
+
+document.querySelectorAll("[data-scroll-control]").forEach((button) => {
+  const targetId = button.getAttribute("data-target");
+  const direction = button.getAttribute("data-scroll-control");
+  const scrollArea = targetId ? document.getElementById(targetId) : null;
+
+  if (!scrollArea) {
+    return;
+  }
+
+  button.addEventListener("click", () => {
+    const firstCard = scrollArea.querySelector(".resource-card");
+    const gap = 16;
+    const distance = firstCard ? firstCard.getBoundingClientRect().width + gap : scrollArea.clientWidth * 0.85;
+    const left = direction === "prev" ? -distance : distance;
+
+    scrollArea.scrollBy({
+      left,
+      behavior: reduceMotion.matches ? "auto" : "smooth",
+    });
   });
 });
+
+if (revealItems.length > 0) {
+  if (reduceMotion.matches || !("IntersectionObserver" in window)) {
+    revealItems.forEach((item) => item.classList.add("is-visible"));
+  } else {
+    const revealObserver = new IntersectionObserver(
+      (entries, observer) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) {
+            return;
+          }
+
+          entry.target.classList.add("is-visible");
+          observer.unobserve(entry.target);
+        });
+      },
+      {
+        threshold: 0.16,
+        rootMargin: "0px 0px -8% 0px",
+      },
+    );
+
+    revealItems.forEach((item) => revealObserver.observe(item));
+  }
+}
